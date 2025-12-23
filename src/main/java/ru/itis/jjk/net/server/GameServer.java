@@ -311,6 +311,10 @@ public final class GameServer {
         long tMs = nowMs();
 
         if (!roundActive) {
+            drainOutOfRoundActions(tMs);
+        }
+
+        if (!roundActive) {
             if (matchOver) {
                 if (p1Id != 0 && p2Id != 0 && p1RematchReady && p2RematchReady) startNewMatch(tMs);
             } else if (nextRoundStartMs > 0 && tMs >= nextRoundStartMs) {
@@ -330,6 +334,21 @@ public final class GameServer {
         if (nowNs - lastStateBroadcastNs >= 1_000_000_000L / Constants.STATE_BROADCAST_HZ) {
             lastStateBroadcastNs = nowNs;
             broadcast(buildState(tMs));
+        }
+    }
+
+    private void drainOutOfRoundActions(long tMs) {
+        for (Player p : gs.players) {
+            var q = actionQueues.get(p.id);
+            if (q == null) continue;
+            String a;
+            while ((a = q.poll()) != null) {
+                if (a == null) continue;
+                String u = a.trim().toUpperCase(Locale.ROOT);
+                if ("REMATCH_READY".equals(u)) {
+                    handleActionWithCooldownAndCost(p, u, tMs);
+                }
+            }
         }
     }
 

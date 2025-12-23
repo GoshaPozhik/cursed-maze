@@ -179,35 +179,8 @@ private Projectile spawnBlue(GameState gs, Player actor, int projId) {
         if (target.hp < 0) target.hp = 0;
         outEvents.add(EventMsg.simple("DAMAGE", attacker.id, "dealt " + dmg + " to #" + target.id + " (hp=" + target.hp + ")", t));
 
-        if (target.hp <= 0) {
-            target.hp = target.maxHp;
-            target.cursedEnergy = target.maxCursedEnergy;
-            target.ceRegenCarry = 0.0;
-            target.cdBlueUntilMs = 0;
-            target.cdRedUntilMs = 0;
-            target.cdPurpleUntilMs = 0;
-            target.cdDismantleUntilMs = 0;
-            target.cdDashUntilMs = 0;
-            target.cdCleaveUntilMs = 0;
-            target.cdWorldSlashUntilMs = 0;
-            target.lastBlueCastMs = 0;
-            target.lastDashCastMs = 0;
-            target.lastDismantleCastMs = 0;
-            target.lastCleaveCastMs = 0;
-            respawn(gs, target);
-            outEvents.add(EventMsg.simple("RESPAWN", target.id, "respawned", t));
+        if (target.hp == 0) {
+            outEvents.add(EventMsg.simple("DOWN", target.id, "downed", t));
         }
-    }
-
-    private static void respawn(GameState gs, Player p) {
-        if (p.id % 2 == 1) {
-            p.pos.x = 2 * Constants.CELL + Constants.CELL / 2.0;
-            p.pos.y = 2 * Constants.CELL + Constants.CELL / 2.0;
-        } else {
-            p.pos.x = (Constants.MAZE_W - 3) * Constants.CELL + Constants.CELL / 2.0;
-            p.pos.y = (Constants.MAZE_H - 3) * Constants.CELL + Constants.CELL / 2.0;
-        }
-        p.vel.x = 0;
-        p.vel.y = 0;
     }
 }

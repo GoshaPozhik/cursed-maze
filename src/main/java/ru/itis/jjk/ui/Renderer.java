@@ -12,6 +12,7 @@ import javafx.scene.shape.ArcType;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+
 import java.util.*;
 import java.util.function.BiConsumer;
 
@@ -47,11 +48,33 @@ public final class Renderer {
         double offX = 0, offY = 0;
         int cell = Constants.CELL;
 
+        double scale = 1.0;
+
         if (mazeCells != null) {
-            double mw = mazeW * cell;
-            double mh = mazeH * cell;
-            offX = Math.max(8, (cw - mw) / 2.0);
-            offY = Math.max(8, (ch - mh) / 2.0);
+            final double SAFE_TOP = 8;
+            final double SAFE_BOTTOM = 120;
+            final double PAD = 8;
+
+            double worldW = mazeW * cell;
+            double worldH = mazeH * cell;
+
+            double availW = cw - PAD * 2;
+            double availH = ch - SAFE_TOP - SAFE_BOTTOM - PAD * 2;
+
+            scale = Math.min(1.0, Math.min(availW / worldW, availH / worldH));
+
+            double drawW = worldW * scale;
+            double drawH = worldH * scale;
+
+            offX = (cw - drawW) / 2.0;
+            offY = SAFE_TOP + (availH - drawH) / 2.0;
+
+            gc.save();
+            gc.translate(offX, offY);
+            gc.scale(scale, scale);
+
+            offX = 0;
+            offY = 0;
 
             drawMaze(gc, mazeCells, mazeW, mazeH, offX, offY, cell);
         } else {
@@ -98,9 +121,13 @@ public final class Renderer {
             drawBlockAvatar(gc, offX + p.x, offY + p.y, p, p.id == yourId, nowNs);
         }
 
+        if (mazeCells != null) {
+            gc.restore();
+        }
+
         gc.setGlobalAlpha(1.0);
         drawDomainClashHud(gc, cw, ch, players);
-        drawMinimalHud(gc, players, players.get(yourId), serverTimeMs, comboGlowMask, matchInfo);
+        drawBottomHud(gc, cw, ch, players, players.get(yourId), serverTimeMs, matchInfo);
         drawMatchOverlay(gc, cw, ch, players, serverTimeMs, matchInfo);
     }
 
@@ -311,12 +338,12 @@ public final class Renderer {
 
         gc.setFill(bodyColor); gc.setStroke(Color.rgb(15, 15, 15)); gc.setLineWidth(1.3);
         double bx = x - 7, by = y - 12;
-        gc.fillRect(x - 6, y - 26, 12, 12); gc.strokeRect(x - 6, y - 26, 12, 12); // head
-        gc.fillRect(bx, by, 14, 16); gc.strokeRect(bx, by, 14, 16); // body
-        gc.fillRect(bx - 5, by, 5, 14); gc.strokeRect(bx - 5, by, 5, 14); // l arm
-        gc.fillRect(bx + 14, by, 5, 14); gc.strokeRect(bx + 14, by, 5, 14); // r arm
-        gc.fillRect(x - 7, y + 4, 6, 14); gc.strokeRect(x - 7, y + 4, 6, 14); // l leg
-        gc.fillRect(x + 1, y + 4, 6, 14); gc.strokeRect(x + 1, y + 4, 6, 14); // r leg
+        gc.fillRect(x - 6, y - 26, 12, 12); gc.strokeRect(x - 6, y - 26, 12, 12);
+        gc.fillRect(bx, by, 14, 16); gc.strokeRect(bx, by, 14, 16);
+        gc.fillRect(bx - 5, by, 5, 14); gc.strokeRect(bx - 5, by, 5, 14);
+        gc.fillRect(bx + 14, by, 5, 14); gc.strokeRect(bx + 14, by, 5, 14);
+        gc.fillRect(x - 7, y + 4, 6, 14); gc.strokeRect(x - 7, y + 4, 6, 14);
+        gc.fillRect(x + 1, y + 4, 6, 14); gc.strokeRect(x + 1, y + 4, 6, 14);
 
         gc.setStroke(Color.rgb(20, 20, 20)); gc.setLineWidth(1.0); gc.strokeText("#" + p.id + " " + p.name, x + 16, y - 28);
         drawBar(gc, x - 19, y - 38, 38, 4, p.hp, p.maxHp, Color.rgb(60, 200, 90));
@@ -332,7 +359,9 @@ public final class Renderer {
     }
 
     private static void drawBlueSingularity(GraphicsContext gc, double x, double y, double r, long nowNs) {
-        RadialGradient g = new RadialGradient(0, 0, x, y, r, false, CycleMethod.NO_CYCLE, new Stop(0, Color.rgb(255,255,255,0.9)), new Stop(1, Color.rgb(60,120,255,0.85)));
+        RadialGradient g = new RadialGradient(0, 0, x, y, r, false, CycleMethod.NO_CYCLE,
+                new Stop(0, Color.rgb(255,255,255,0.9)),
+                new Stop(1, Color.rgb(60,120,255,0.85)));
         gc.setFill(g); gc.fillOval(x - r, y - r, r*2, r*2);
         int seed = (int)((nowNs >> 17) ^ ((long)(x*19)<<2));
         gc.setGlobalAlpha(0.55); gc.setStroke(Color.rgb(60, 120, 255)); gc.setLineWidth(2.0);
@@ -351,7 +380,9 @@ public final class Renderer {
         gc.setLineWidth(2.2); gc.setGlobalAlpha(0.55); gc.setStroke(Color.rgb(60, 160, 255));
         for (int i=0; i<3; i++) {
             double rr = r*(2.2+i*0.9);
-            gc.strokeArc(x-rr, y-rr, rr*2, rr*2, Math.toDegrees(((t%628)/100.0 * (1.0+i*0.35)+i*1.7)%(Math.PI*2)), 240, ArcType.OPEN);
+            gc.strokeArc(x-rr, y-rr, rr*2, rr*2,
+                    Math.toDegrees(((t%628)/100.0 * (1.0+i*0.35)+i*1.7)%(Math.PI*2)),
+                    240, ArcType.OPEN);
         }
         gc.setGlobalAlpha(1.0); gc.setLineWidth(1.0);
     }
@@ -366,7 +397,9 @@ public final class Renderer {
     }
 
     private static void drawPurple(GraphicsContext gc, double x, double y, double r, long nowNs) {
-        RadialGradient core = new RadialGradient(0, 0, x, y, r, false, CycleMethod.NO_CYCLE, new Stop(0, Color.rgb(255,255,255,0.95)), new Stop(1, Color.rgb(130,40,220,0.95)));
+        RadialGradient core = new RadialGradient(0, 0, x, y, r, false, CycleMethod.NO_CYCLE,
+                new Stop(0, Color.rgb(255,255,255,0.95)),
+                new Stop(1, Color.rgb(130,40,220,0.95)));
         gc.setFill(core); gc.fillOval(x - r, y - r, r*2, r*2);
         double rot = ((nowNs / 18_000_000L) % 360);
         gc.setLineWidth(2.6); gc.setGlobalAlpha(0.55);
@@ -547,72 +580,131 @@ public final class Renderer {
         gc.setFill(Color.rgb(80, 80, 80)); gc.setFont(Font.font("System", 12)); gc.fillText("Gojo CE " + g + " vs Sukuna CE " + s, x + 6, y + h + 34);
     }
 
-    private static void drawMinimalHud(GraphicsContext gc, Map<Integer, PlayerStateDTO> players, PlayerStateDTO me, long tMs, int comboGlowMask, MatchInfo matchInfo) {
+    private static void drawBottomHud(GraphicsContext gc, double cw, double ch,
+                                      Map<Integer, PlayerStateDTO> players,
+                                      PlayerStateDTO me,
+                                      long tMs,
+                                      MatchInfo matchInfo) {
         if (me == null) return;
-        double x = 12, y = 12, w = 310, h = 92;
-        String p1Name="P1", p2Name="P2"; int p1Score=0, p2Score=0, round=1, winScore=3;
 
+        // максимально компактная панель
+        final double panelH = 112;
+        final double margin = 10;
+        final double x = margin;
+        final double y = ch - panelH - margin;
+        final double w = cw - margin * 2;
+
+        gc.setFill(Color.rgb(250, 250, 250));
+        gc.fillRoundRect(x, y, w, panelH, 16, 16);
+        gc.setStroke(Color.rgb(205, 205, 205));
+        gc.strokeRoundRect(x, y, w, panelH, 16, 16);
+
+        // данные матча (в одну строку — компактно)
+        int round = 1, p1Score = 0, p2Score = 0, winScore = 3;
         if (matchInfo != null) {
-            round = Math.max(1, matchInfo.roundNumber()); winScore = Math.max(1, matchInfo.winScore());
-            p1Score = matchInfo.p1Score(); p2Score = matchInfo.p2Score();
-            PlayerStateDTO p1 = players.get(matchInfo.p1Id()), p2 = players.get(matchInfo.p2Id());
-            if(p1!=null) p1Name=p1.name; if(p2!=null) p2Name=p2.name;
+            round = Math.max(1, matchInfo.roundNumber());
+            winScore = Math.max(1, matchInfo.winScore());
+            p1Score = matchInfo.p1Score();
+            p2Score = matchInfo.p2Score();
         }
 
-        gc.setFill(Color.rgb(250, 250, 250)); gc.fillRoundRect(x, y, w, h, 16, 16);
-        gc.setStroke(Color.rgb(205, 205, 205)); gc.strokeRoundRect(x, y, w, h, 16, 16);
-        gc.setFill(Color.rgb(20, 20, 20)); gc.setFont(Font.font("System", FontWeight.BOLD, 15)); gc.fillText("Round " + round + "  •  " + p1Score + "–" + p2Score, x + 14, y + 24);
-        gc.setFill(Color.rgb(90, 90, 90)); gc.setFont(Font.font("System", 11)); gc.fillText(p1Name + " vs " + p2Name + "  (to " + winScore + ")", x + 14, y + 41);
+        gc.setFill(Color.rgb(20, 20, 20));
+        gc.setFont(Font.font("System", FontWeight.BOLD, 14));
+        gc.fillText("R" + round + "  " + p1Score + "–" + p2Score + " (to " + winScore + ")", x + 12, y + 20);
 
+        // ∞ (маленький бейдж, тоже компактно)
         if ("GOJO".equalsIgnoreCase(me.character)) {
-            double px = x + w - 54, py = y + 14;
-            gc.setFill(Color.rgb(240, 240, 240)); gc.fillRoundRect(px, py, 40, 22, 12, 12);
-            gc.setStroke(Color.rgb(205, 205, 205)); gc.strokeRoundRect(px, py, 40, 22, 12, 12);
-            gc.setFill(me.cursedEnergy > 0 ? Color.rgb(20, 20, 20) : Color.rgb(150, 150, 150)); gc.setFont(Font.font("System", FontWeight.BOLD, 16)); gc.fillText("∞", px + 14, py + 16);
+            double bx = x + w - 52, by = y + 8;
+            gc.setFill(Color.WHITE);
+            gc.fillRoundRect(bx, by, 40, 26, 12, 12);
+            gc.setStroke(Color.rgb(205, 205, 205));
+            gc.strokeRoundRect(bx, by, 40, 26, 12, 12);
+
+            gc.setFill(me.cursedEnergy > 0 ? Color.rgb(20, 20, 20) : Color.rgb(150, 150, 150));
+            gc.setFont(Font.font("System", FontWeight.BOLD, 18));
+            gc.fillText("∞", bx + 14, by + 19);
         }
 
-        double barX = x + 14, barW = w - 28;
-        drawBar(gc, barX, y + 52, barW, 10, me.hp, me.maxHp, Color.rgb(245, 95, 115));
-        drawBar(gc, barX, y + 68, barW, 10, me.cursedEnergy, me.maxCursedEnergy, Color.rgb(90, 160, 245));
-        gc.setFill(Color.rgb(20, 20, 20)); gc.setFont(Font.font("System", FontWeight.BOLD, 11));
-        gc.fillText("HP " + me.hp + "/" + me.maxHp, barX, y + 50); gc.fillText("CE " + me.cursedEnergy + "/" + me.maxCursedEnergy, barX, y + 66);
+        // --- справа: абилки (компактнее + выше)
+        final double slot = 44;
+        final double pad = 8;
+        final double abilTotalW = (slot + pad) * 5 - pad;       // 5 слотов
+        final double abilX0 = x + w - 12 - abilTotalW;          // выравнивание вправо
+        final double abilY0 = y + panelH - slot - 8;            // почти у низа
 
-        drawAbilityHud(gc, gc.getCanvas().getWidth(), gc.getCanvas().getHeight(), me, tMs);
+        // --- слева: HP/CE (ЕЩЁ НИЖЕ — на уровне иконок)
+        final double barsX = x + 12;
+        final double barsW = Math.max(160, abilX0 - barsX - 12);
+
+        final double barH = 8;
+        final double hpY = abilY0 + 6;   // ниже, чем было
+        final double ceY = abilY0 + 24;  // ниже, чем было
+
+        gc.setFill(Color.rgb(20, 20, 20));
+        gc.setFont(Font.font("System", FontWeight.BOLD, 11));
+        gc.fillText("HP " + me.hp + "/" + me.maxHp, barsX, hpY - 3);
+        drawBar(gc, barsX, hpY, barsW, barH, me.hp, me.maxHp, Color.rgb(245, 95, 115));
+
+        gc.fillText("CE " + me.cursedEnergy + "/" + me.maxCursedEnergy, barsX, ceY - 3);
+        drawBar(gc, barsX, ceY, barsW, barH, me.cursedEnergy, me.maxCursedEnergy, Color.rgb(90, 160, 245));
+
+        // абилки справа
+        drawAbilityHudAt(gc, abilX0, abilY0, me, tMs);
     }
 
-    private static void drawAbilityHud(GraphicsContext gc, double cw, double ch, PlayerStateDTO me, long tMs) {
+    private static void drawAbilityHudAt(GraphicsContext gc, double x0, double y0, PlayerStateDTO me, long tMs) {
         boolean gojo = "GOJO".equalsIgnoreCase(me.character);
-        String[] keys = {"Q","E","R","SPACE","SHIFT"};
-        String[] names = gojo ? new String[]{"BLUE","RED","BLUE MAX","STEP","DOMAIN"} : new String[]{"DISMANTLE","CLEAVE","FUGA","DASH","DOMAIN"};
-        long[] cds = gojo ? new long[]{me.cdBlueUntilMs, me.cdRedUntilMs, me.cdBlueUntilMs, me.cdDashUntilMs, me.cdDomainUntilMs}
+
+        String[] keys  = {"Q","E","R","SPACE","SHIFT"};
+        String[] names = gojo
+                ? new String[]{"BLUE","RED","BLUE MAX","STEP","DOMAIN"}
+                : new String[]{"DISMANTLE","CLEAVE","FUGA","DASH","DOMAIN"};
+
+        long[] cds = gojo
+                ? new long[]{me.cdBlueUntilMs, me.cdRedUntilMs, me.cdBlueUntilMs, me.cdDashUntilMs, me.cdDomainUntilMs}
                 : new long[]{me.cdDismantleUntilMs, me.cdCleaveUntilMs, me.cdFugaUntilMs, me.cdDashUntilMs, me.cdDomainUntilMs};
+
         int[] costs = gojo ? new int[]{12,14,10,6,60} : new int[]{10,10,18,8,60};
 
-        double slot = 56, pad = 10, totalW = (slot+pad)*5 - pad, x0 = (cw - totalW) * 0.5, y0 = ch - slot - 62;
-
-        gc.setFill(Color.rgb(250, 250, 250)); gc.fillRoundRect(x0 - 10, y0 - 16, totalW + 20, slot + 64, 18, 18);
-        gc.setStroke(Color.rgb(205, 205, 205)); gc.strokeRoundRect(x0 - 10, y0 - 16, totalW + 20, slot + 64, 18, 18);
+        final double slot = 44;
+        final double pad  = 8;
 
         for (int i = 0; i < 5; i++) {
             double x = x0 + i * (slot + pad);
-            gc.setFill(Color.WHITE); gc.fillRoundRect(x, y0, slot, slot, 14, 14);
-            gc.setStroke(Color.rgb(205, 205, 205)); gc.strokeRoundRect(x, y0, slot, slot, 14, 14);
 
-            gc.save(); gc.translate(x + slot/2, y0 + slot/2); drawAbilityIcon(gc, names[i]); gc.restore();
+            // фон слота
+            gc.setFill(Color.WHITE);
+            gc.fillRoundRect(x, y0, slot, slot, 12, 12);
+            gc.setStroke(Color.rgb(205, 205, 205));
+            gc.strokeRoundRect(x, y0, slot, slot, 12, 12);
 
-            gc.setFill(Color.rgb(20, 20, 20)); gc.setFont(Font.font("System", FontWeight.BOLD, 12)); gc.fillText(keys[i], x + 6, y0 + 14);
-            gc.setFill(Color.rgb(90, 90, 90)); gc.setFont(Font.font("System", 11)); gc.fillText(costs[i] + " CE", x + 6, y0 + slot + 14);
-            gc.setFill(Color.rgb(70, 70, 70)); gc.fillText(names[i], x + 6, y0 + slot + 30);
+            // иконка
+            gc.save();
+            gc.translate(x + slot / 2.0, y0 + slot / 2.0);
+            drawAbilityIcon(gc, names[i]);
+            gc.restore();
 
+            // клавиша (внутри)
+            gc.setFill(Color.rgb(20, 20, 20));
+            gc.setFont(Font.font("System", FontWeight.BOLD, 11));
+            gc.fillText(keys[i], x + 6, y0 + 12);
+
+            // стоимость (внутри, снизу слева)
+            gc.setFill(Color.rgb(90, 90, 90));
+            gc.setFont(Font.font("System", FontWeight.BOLD, 10));
+            gc.fillText(costs[i] + "", x + 6, y0 + slot - 6);
+
+            // кулдаун
             long remain = Math.max(0, cds[i] - tMs);
             if (remain > 0) {
-                gc.setFill(Color.rgb(230, 230, 230)); gc.fillRoundRect(x, y0, slot, slot, 14, 14);
-                gc.setFill(Color.rgb(20, 20, 20)); gc.setFont(Font.font("System", FontWeight.BOLD, 16));
-                gc.fillText(String.format("%.1fs", remain / 1000.0), x + 10, y0 + 34);
+                gc.setFill(Color.rgb(235, 235, 235));
+                gc.fillRoundRect(x, y0, slot, slot, 12, 12);
+
+                gc.setFill(Color.rgb(20, 20, 20));
+                gc.setFont(Font.font("System", FontWeight.BOLD, 12));
+                gc.fillText(String.format(Locale.US, "%.1f", remain / 1000.0), x + 8, y0 + 26);
             }
         }
-        gc.setFill(Color.rgb(90, 90, 90)); gc.setFont(Font.font("System", 12));
-        gc.fillText(gojo ? "Combo: Q→E = PURPLE | Q→R = BLUE MAX" : "Combo: SPACE→Q→E = WCS", x0, y0 - 2);
     }
 
     private static void drawAbilityIcon(GraphicsContext gc, String name) {
@@ -641,7 +733,9 @@ public final class Renderer {
 
     private static void drawMatchOverlay(GraphicsContext gc, double cw, double ch, Map<Integer, PlayerStateDTO> players, long tMs, MatchInfo matchInfo) {
         if (matchInfo == null || matchInfo.roundActive()) return;
-        gc.setFill(Color.rgb(250, 250, 250)); gc.fillRect(0, 0, cw, ch);
+        gc.setFill(Color.rgb(255, 255, 255, 0.75));
+        gc.fillRect(0, 0, cw, ch);
+
         double w = Math.min(560, cw * 0.78), h = 240, x = (cw - w) / 2.0, y = (ch - h) / 2.0;
 
         gc.setFill(Color.WHITE); gc.fillRoundRect(x, y, w, h, 18, 18);
@@ -667,5 +761,7 @@ public final class Renderer {
         }
     }
 
-    private static double clamp(double v, double min, double max) { return Math.max(min, Math.min(max, v)); }
+    private static double clamp(double v, double min, double max) {
+        return Math.max(min, Math.min(max, v));
+    }
 }
