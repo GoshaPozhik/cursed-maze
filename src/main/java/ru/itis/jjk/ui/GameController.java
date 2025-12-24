@@ -268,7 +268,7 @@ public final class GameController {
             if (lastDashCastMs > 0) {
                 long dtd = nowMs - lastDashCastMs;
                 if (dtd >= 0 && dtd <= WCS_HINT_WINDOW_MS) {
-                    if (!(lastDismantleCastMs > lastDashCastMs && (nowMs - lastDismantleCastMs) <= WCS_HINT_WINDOW_MS)) mask |= (1 << 0);
+                    if (!(lastDismantleCastMs > lastDashCastMs && (nowMs - lastDismantleCastMs) <= WCS_HINT_WINDOW_MS)) mask |= (1);
                 }
             }
             if (lastDismantleCastMs > lastDashCastMs && lastDismantleCastMs > 0) {

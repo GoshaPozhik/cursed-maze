@@ -48,7 +48,7 @@ public final class AbilitySystem {
                         events.add(EventMsg.simple("WARN", actor.id, "PURPLE ignored (not GOJO)", serverTimeMs));
                         break;
                     }
-                    Projectile pr = spawnPurple(gs, actor, projectileIdGen.getAndIncrement());
+                    Projectile pr = spawnPurple(actor, projectileIdGen.getAndIncrement());
                     gs.projectiles.add(pr);
                     events.add(EventMsg.simple("SPAWN_PROJECTILE", actor.id, "PURPLE#" + pr.id, serverTimeMs));
                 }
@@ -125,7 +125,7 @@ private Projectile spawnBlue(GameState gs, Player actor, int projId) {
     double speed = 250.0;
     pr.angleRad = actor.facingAngleRad;
 
-    Vec2 p = tryPlaceInFront(gs, actor, 34);
+    Vec2 p = tryPlaceInFront(gs, actor);
     pr.pos.x = p.x;
     pr.pos.y = p.y;
 
@@ -135,7 +135,7 @@ private Projectile spawnBlue(GameState gs, Player actor, int projId) {
     return pr;
 }
 
-    private Projectile spawnPurple(GameState gs, Player actor, int projId) {
+    private Projectile spawnPurple(Player actor, int projId) {
         Projectile pr = new Projectile(projId, actor.id, "PURPLE");
         pr.radius = 18.0;
         pr.damage = 35;
@@ -156,10 +156,10 @@ private Projectile spawnBlue(GameState gs, Player actor, int projId) {
         return pr;
     }
 
-    private Vec2 tryPlaceInFront(GameState gs, Player actor, double distance) {
+    private Vec2 tryPlaceInFront(GameState gs, Player actor) {
         double ang = actor.facingAngleRad;
         for (int i = 0; i < 6; i++) {
-            double d = distance - i * 8;
+            double d = (double) 34 - i * 8;
             Vec2 p = new Vec2(
                     actor.pos.x + Math.cos(ang) * d,
                     actor.pos.y + Math.sin(ang) * d
@@ -169,7 +169,7 @@ private Projectile spawnBlue(GameState gs, Player actor, int projId) {
         return actor.pos.copy();
     }
 
-    public static void applyDamage(GameState gs, Player attacker, Player target, int dmg, long t, List<EventMsg> outEvents) {
+    public static void applyDamage(Player attacker, Player target, int dmg, long t, List<EventMsg> outEvents) {
         if (dmg <= 0) {
             outEvents.add(EventMsg.simple("DAMAGE", attacker.id, "dealt 0 to #" + target.id + " (hp=" + target.hp + ")", t));
             return;

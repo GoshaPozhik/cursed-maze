@@ -20,7 +20,6 @@ public final class GameClient {
     private final FramedTcp framed = new FramedTcp();
 
     private final BlockingQueue<NetMessage> inbox = new LinkedBlockingQueue<>();
-    private Thread readerThread;
 
     private volatile boolean connected = false;
 
@@ -37,7 +36,7 @@ public final class GameClient {
         out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
 
         connected = true;
-        readerThread = new Thread(this::readLoop, "client-reader");
+        Thread readerThread = new Thread(this::readLoop, "client-reader");
         readerThread.setDaemon(true);
         readerThread.start();
     }
@@ -65,10 +64,6 @@ public final class GameClient {
 
     public void sendInput(InputMsg msg) throws IOException {
         send(msg);
-    }
-
-    public void sendChat(int fromId, String text) throws IOException {
-        send(new ChatMsg(fromId, text));
     }
 
     public void ping() throws IOException {

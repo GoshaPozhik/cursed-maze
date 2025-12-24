@@ -275,6 +275,7 @@ public final class GameServer {
                     wm.mazeH = gs.maze.h;
                     wm.mazeCells = gs.maze.cells;
                     peer.send(wm);
+                    assert p != null;
                     broadcast(EventMsg.simple("SYSTEM", peer.id, p.name + " joined as " + p.character, nowMs()));
                     maybeStartFirstRound(nowMs());
                 }
@@ -343,7 +344,6 @@ public final class GameServer {
             if (q == null) continue;
             String a;
             while ((a = q.poll()) != null) {
-                if (a == null) continue;
                 String u = a.trim().toUpperCase(Locale.ROOT);
                 if ("REMATCH_READY".equals(u)) {
                     handleActionWithCooldownAndCost(p, u, tMs);
@@ -460,8 +460,8 @@ public final class GameServer {
                     broadcast(EventMsg.simple("COMBO", actor.id, "MAXIMUM OUTPUT: BLUE!", tMs));
                     return;
                 }
-                if (!checkCooldown(actor.id, tMs, lastCastBlueMs, actor.cdBlueUntilMs, CD_BLUE_MS, "BLUE")) return;
-                if (!checkCost(actor, CE_COST_BLUE, "BLUE", tMs)) return;
+                if (checkCooldown(actor.id, tMs, lastCastBlueMs, actor.cdBlueUntilMs, CD_BLUE_MS, "BLUE")) return;
+                if (checkCost(actor, CE_COST_BLUE, "BLUE", tMs)) return;
 
                 actor.cursedEnergy -= CE_COST_BLUE;
                 actor.cdBlueUntilMs = tMs + CD_BLUE_MS;
@@ -474,8 +474,8 @@ public final class GameServer {
                 if (actor.lastBlueCastMs > 0 && (tMs - actor.lastBlueCastMs) <= PURPLE_COMBO_WINDOW_MS) {
                     if (tryCastPurple(actor, tMs)) return;
                 }
-                if (!checkCooldown(actor.id, tMs, lastCastRedMs, actor.cdRedUntilMs, CD_RED_MS, "RED")) return;
-                if (!checkCost(actor, CE_COST_RED, "RED", tMs)) return;
+                if (checkCooldown(actor.id, tMs, lastCastRedMs, actor.cdRedUntilMs, CD_RED_MS, "RED")) return;
+                if (checkCost(actor, CE_COST_RED, "RED", tMs)) return;
 
                 actor.cursedEnergy -= CE_COST_RED;
                 actor.cdRedUntilMs = tMs + CD_RED_MS;
@@ -484,8 +484,8 @@ public final class GameServer {
             }
             case "DISMANTLE" -> {
                 if (!actor.isSukuna()) return;
-                if (!checkCooldown(actor.id, tMs, lastCastDismantleMs, actor.cdDismantleUntilMs, CD_DISMANTLE_MS, "DISMANTLE")) return;
-                if (!checkCost(actor, CE_COST_DISMANTLE, "DISMANTLE", tMs)) return;
+                if (checkCooldown(actor.id, tMs, lastCastDismantleMs, actor.cdDismantleUntilMs, CD_DISMANTLE_MS, "DISMANTLE")) return;
+                if (checkCost(actor, CE_COST_DISMANTLE, "DISMANTLE", tMs)) return;
 
                 actor.cursedEnergy -= CE_COST_DISMANTLE;
                 actor.cdDismantleUntilMs = tMs + CD_DISMANTLE_MS;
@@ -495,9 +495,9 @@ public final class GameServer {
             }
             case "DASH" -> {
                 int dashCd = actor.isGojo() ? CD_DASH_GOJO_MS : CD_DASH_MS;
-                if (!checkCooldown(actor.id, tMs, lastCastDashMs, actor.cdDashUntilMs, dashCd, "DASH")) return;
+                if (checkCooldown(actor.id, tMs, lastCastDashMs, actor.cdDashUntilMs, dashCd, "DASH")) return;
                 int dashCost = actor.isGojo() ? CE_COST_DASH_GOJO : CE_COST_DASH;
-                if (!checkCost(actor, dashCost, "DASH", tMs)) return;
+                if (checkCost(actor, dashCost, "DASH", tMs)) return;
 
                 actor.cursedEnergy -= dashCost;
                 actor.cdDashUntilMs = tMs + dashCd;
@@ -526,8 +526,8 @@ public final class GameServer {
                     if (tryCastWorldSlash(actor, tMs)) return;
                 }
                 if (!actor.isSukuna()) return;
-                if (!checkCooldown(actor.id, tMs, lastCastCleaveMs, actor.cdCleaveUntilMs, CD_CLEAVE_MS, "CLEAVE")) return;
-                if (!checkCost(actor, CE_COST_CLEAVE, "CLEAVE", tMs)) return;
+                if (checkCooldown(actor.id, tMs, lastCastCleaveMs, actor.cdCleaveUntilMs, CD_CLEAVE_MS, "CLEAVE")) return;
+                if (checkCost(actor, CE_COST_CLEAVE, "CLEAVE", tMs)) return;
 
                 actor.cursedEnergy -= CE_COST_CLEAVE;
                 actor.cdCleaveUntilMs = tMs + CD_CLEAVE_MS;
@@ -545,8 +545,8 @@ public final class GameServer {
             }
             case "FUGA" -> {
                 if (!actor.isSukuna()) return;
-                if (!checkCooldown(actor.id, tMs, lastCastFugaMs, actor.cdFugaUntilMs, CD_FUGA_MS, "FUGA")) return;
-                if (!checkCost(actor, CE_COST_FUGA, "FUGA", tMs)) return;
+                if (checkCooldown(actor.id, tMs, lastCastFugaMs, actor.cdFugaUntilMs, CD_FUGA_MS, "FUGA")) return;
+                if (checkCost(actor, CE_COST_FUGA, "FUGA", tMs)) return;
 
                 actor.cursedEnergy -= CE_COST_FUGA;
                 actor.cdFugaUntilMs = tMs + CD_FUGA_MS;
@@ -566,17 +566,17 @@ public final class GameServer {
         if (tMs - last < cdMs || tMs < cdUntil) {
             long remain = Math.max(cdMs - (tMs - last), cdUntil - tMs);
             broadcast(EventMsg.simple("COOLDOWN", id, name + " ready in " + Math.max(0, remain) + "ms", tMs));
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     private boolean checkCost(Player p, int cost, String name, long tMs) {
         if (p.cursedEnergy < cost) {
             broadcast(EventMsg.simple("NO_CE", p.id, "Need " + cost + " CE for " + name, tMs));
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     private void broadcastEvents(List<EventMsg> evs) {
@@ -612,9 +612,9 @@ public final class GameServer {
         broadcast(EventMsg.simple("DOMAIN_START", actor.id, kind, tMs));
     }
 
-    private void endDomain(Player actor, long tMs, String reason) {
+    private void endDomain(Player actor, long tMs) {
         if ("NONE".equalsIgnoreCase(actor.activeDomain)) return;
-        broadcast(EventMsg.simple("DOMAIN_END", actor.id, actor.activeDomain + " (" + reason + ")", tMs));
+        broadcast(EventMsg.simple("DOMAIN_END", actor.id, actor.activeDomain + " (" + "CE=0" + ")", tMs));
         actor.activeDomain = "NONE";
         actor.domainStartMs = 0;
         actor.domainRadius = 0;
@@ -668,7 +668,7 @@ public final class GameServer {
             if (drain > 0) {
                 owner.domainCeDrainCarry -= drain;
                 owner.cursedEnergy = Math.max(0, owner.cursedEnergy - drain);
-                if (owner.cursedEnergy == 0) endDomain(owner, tMs, "CE=0");
+                if (owner.cursedEnergy == 0) endDomain(owner, tMs);
             }
         }
 
@@ -683,7 +683,7 @@ public final class GameServer {
                 while (tMs >= sukuna.domainNextTickMs) sukuna.domainNextTickMs += MS_SURE_HIT_TICK_MS;
                 if (isInsideDomain(gojo, sukuna) && !(clash && isInDomainOverlap(gojo, gojo, sukuna))) {
                     List<EventMsg> evs = new ArrayList<>();
-                    AbilitySystem.applyDamage(gs, sukuna, gojo, MS_SURE_HIT_DAMAGE, tMs, evs);
+                    AbilitySystem.applyDamage(sukuna, gojo, MS_SURE_HIT_DAMAGE, tMs, evs);
                     broadcastEvents(evs);
                 }
             }
@@ -727,8 +727,8 @@ public final class GameServer {
     }
 
     private boolean tryCastPurple(Player actor, long tMs) {
-        if (!checkCooldown(actor.id, tMs, lastCastPurpleMs, actor.cdPurpleUntilMs, CD_PURPLE_MS, "PURPLE")) return false;
-        if (!checkCost(actor, CE_COST_PURPLE, "PURPLE", tMs)) return false;
+        if (checkCooldown(actor.id, tMs, lastCastPurpleMs, actor.cdPurpleUntilMs, CD_PURPLE_MS, "PURPLE")) return false;
+        if (checkCost(actor, CE_COST_PURPLE, "PURPLE", tMs)) return false;
 
         actor.cursedEnergy -= CE_COST_PURPLE;
         consumeGojoBlueForPurple(actor.id);
@@ -744,8 +744,8 @@ public final class GameServer {
     }
 
     private boolean tryCastWorldSlash(Player actor, long tMs) {
-        if (!checkCooldown(actor.id, tMs, lastCastWorldSlashMs, actor.cdWorldSlashUntilMs, CD_WORLD_SLASH_MS, "WORLD SLASH")) return false;
-        if (!checkCost(actor, CE_COST_WORLD_SLASH, "WORLD SLASH", tMs)) return false;
+        if (checkCooldown(actor.id, tMs, lastCastWorldSlashMs, actor.cdWorldSlashUntilMs, CD_WORLD_SLASH_MS, "WORLD SLASH")) return false;
+        if (checkCost(actor, CE_COST_WORLD_SLASH, "WORLD SLASH", tMs)) return false;
 
         actor.cursedEnergy -= CE_COST_WORLD_SLASH;
         actor.cdWorldSlashUntilMs = tMs + CD_WORLD_SLASH_MS;
@@ -794,17 +794,16 @@ public final class GameServer {
             if (Raycast.hasWallBetween(gs.maze, actor.pos, target.pos)) continue;
 
             if (target.isGojo() && target.cursedEnergy > 0) {
-                int before = target.cursedEnergy;
                 target.cursedEnergy = Math.max(0, target.cursedEnergy - CE_LOSS_ON_CLEAVE_BLOCK);
                 broadcast(EventMsg.simple("INFINITY_BLOCK", target.id, "Infinity blocked CLEAVE", tMs));
-                if (before > 0 && target.cursedEnergy == 0) broadcast(EventMsg.simple("INFINITY_DOWN", target.id, "Infinity disabled", tMs));
+                if (target.cursedEnergy == 0) broadcast(EventMsg.simple("INFINITY_DOWN", target.id, "Infinity disabled", tMs));
                 hits++;
                 continue;
             }
 
             int dmg = Math.min(Math.max(8, (int) Math.round(target.hp * 0.18)), 28);
             List<EventMsg> evs = new ArrayList<>();
-            AbilitySystem.applyDamage(gs, actor, target, dmg, tMs, evs);
+            AbilitySystem.applyDamage(actor, target, dmg, tMs, evs);
             broadcastEvents(evs);
             target.vel.x += nx * 240.0;
             target.vel.y += ny * 240.0;
@@ -819,7 +818,7 @@ public final class GameServer {
         List<Projectile> toAdd = new ArrayList<>();
 
         for (Projectile pr : gs.projectiles) {
-            if (pr.kind != null && ("BLUE".equalsIgnoreCase(pr.kind) || "BLUE_MAX".equalsIgnoreCase(pr.kind))) {
+            if (("BLUE".equalsIgnoreCase(pr.kind) || "BLUE_MAX".equalsIgnoreCase(pr.kind))) {
                 for (Projectile other : gs.projectiles) {
                     if (other.id != pr.id && other.ownerId != pr.ownerId) applyBluePull(pr, other.pos, other.vel, dt);
                 }
@@ -975,7 +974,7 @@ public final class GameServer {
                 Player attacker = gs.getPlayer(pr.ownerId);
                 if (attacker == null) attacker = target;
                 List<EventMsg> evs = new ArrayList<>();
-                AbilitySystem.applyDamage(gs, attacker, target, pr.damage, tMs, evs);
+                AbilitySystem.applyDamage(attacker, target, pr.damage, tMs, evs);
                 broadcastEvents(evs);
                 Vec2 kb = new Vec2(target.pos.x - pr.pos.x, target.pos.y - pr.pos.y);
                 if (kb.len() > 1e-6) kb.norm();
@@ -1036,7 +1035,7 @@ public final class GameServer {
         Player attacker = gs.getPlayer(pr.ownerId);
         if (attacker == null) attacker = target;
         List<EventMsg> evs = new ArrayList<>();
-        AbilitySystem.applyDamage(gs, attacker, target, dmg, tMs, evs);
+        AbilitySystem.applyDamage(attacker, target, dmg, tMs, evs);
         broadcastEvents(evs);
         Vec2 kb = new Vec2(target.pos.x - pr.pos.x, target.pos.y - pr.pos.y);
         if (kb.len() > 1e-6) kb.norm();
@@ -1055,7 +1054,7 @@ public final class GameServer {
 
     private void applyBluePullToPlayerVel(Player player, double dt) {
         for (Projectile pr : gs.projectiles) {
-            if (pr.kind != null && ("BLUE".equalsIgnoreCase(pr.kind) || "BLUE_MAX".equalsIgnoreCase(pr.kind)) && pr.ownerId != player.id) {
+            if (("BLUE".equalsIgnoreCase(pr.kind) || "BLUE_MAX".equalsIgnoreCase(pr.kind)) && pr.ownerId != player.id) {
                 applyBluePull(pr, player.pos, player.vel, dt);
             }
         }
@@ -1177,7 +1176,7 @@ public final class GameServer {
             Player attacker = gs.getPlayer(fire.ownerId);
             if (attacker == null) attacker = target;
             List<EventMsg> evs = new ArrayList<>();
-            AbilitySystem.applyDamage(gs, attacker, target, fire.dotDamage, tMs, evs);
+            AbilitySystem.applyDamage(attacker, target, fire.dotDamage, tMs, evs);
             broadcastEvents(evs);
         }
     }
@@ -1193,7 +1192,7 @@ public final class GameServer {
             }
             if (attacker == null) attacker = target;
             List<EventMsg> evs = new ArrayList<>();
-            AbilitySystem.applyDamage(gs, attacker, target, FUGA_EXPLOSION_DAMAGE, tMs, evs);
+            AbilitySystem.applyDamage(attacker, target, FUGA_EXPLOSION_DAMAGE, tMs, evs);
             broadcastEvents(evs);
         }
     }

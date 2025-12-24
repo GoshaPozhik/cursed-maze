@@ -59,9 +59,7 @@ public class MainApp extends Application {
             showGame(client);
         } catch (Exception e) {
             e.printStackTrace();
-            Platform.runLater(() -> {
-                showLobby();
-            });
+            Platform.runLater(this::showLobby);
         }
     }
 

@@ -5,7 +5,6 @@ public final class HelloMsg implements NetMessage {
 
     public String name;
     public String character; // "GOJO" или "SUKUNA"
-    public int protocolVersion = 1;
 
     public HelloMsg() {}
 

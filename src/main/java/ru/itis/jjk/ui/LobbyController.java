@@ -7,9 +7,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-
 public final class LobbyController {
 
     public interface HostHandler {
@@ -25,7 +22,6 @@ public final class LobbyController {
     private final TextField hostField = new TextField("127.0.0.1");
     private final TextField portField = new TextField("7777");
 
-    private final ToggleGroup charGroup = new ToggleGroup();
     private final RadioButton gojo = new RadioButton("Gojo");
     private final RadioButton sukuna = new RadioButton("Sukuna");
 
@@ -35,6 +31,7 @@ public final class LobbyController {
         Label title = new Label("JJK Maze Duel");
         title.setFont(Font.font(28));
 
+        ToggleGroup charGroup = new ToggleGroup();
         gojo.setToggleGroup(charGroup);
         sukuna.setToggleGroup(charGroup);
         gojo.setSelected(true);

@@ -36,8 +36,6 @@ public final class Projectile {
     public boolean anchorToOwner = false;
     public double centerX = 0.0;
     public double centerY = 0.0;
-    public double baseVx = 0.0;
-    public double baseVy = 0.0;
 
     public long hitMask = 0L;
 

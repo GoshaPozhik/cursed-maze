@@ -48,7 +48,7 @@ public final class Renderer {
         double offX = 0, offY = 0;
         int cell = Constants.CELL;
 
-        double scale = 1.0;
+        double scale;
 
         if (mazeCells != null) {
             final double SAFE_TOP = 8;
@@ -89,7 +89,7 @@ public final class Renderer {
         updateTrails(projectiles, nowNs, offX, offY);
         drawTrails(gc, projectiles, nowNs);
 
-        drawDomains(gc, cw, ch, players, serverTimeMs, offX, offY);
+        drawDomains(gc, cw, ch, players, serverTimeMs);
 
         for (ProjectileStateDTO pr : projectiles.values()) {
             double sx = offX + pr.x;
@@ -97,7 +97,7 @@ public final class Renderer {
             String kind = pr.kind == null ? "" : pr.kind.toUpperCase(Locale.ROOT);
             switch (kind) {
                 case "BLUE" -> drawBlueSingularity(gc, sx, sy, pr.radius, nowNs);
-                case "BLUE_MAX" -> drawBlueMaximum(gc, sx, sy, pr.radius, pr.angleRad, nowNs);
+                case "BLUE_MAX" -> drawBlueMaximum(gc, sx, sy, pr.radius, nowNs);
                 case "RED" -> drawRedOrb(gc, sx, sy, pr.radius, nowNs);
                 case "DISMANTLE" -> drawDismantleSlash(gc, sx, sy, pr, nowNs);
                 case "PURPLE" -> drawPurple(gc, sx, sy, pr.radius, nowNs);
@@ -106,7 +106,7 @@ public final class Renderer {
                 case "EXPLOSION" -> drawExplosion(gc, sx, sy, pr.radius, nowNs);
                 case "WCS" -> drawWorldCuttingSlash(gc, sx, sy, pr, nowNs);
                 case "CLEAVE_FX" -> drawCleaveFx(gc, sx, sy, pr, nowNs);
-                case "DASH_FX" -> drawDashFx(gc, sx, sy, pr, nowNs);
+                case "DASH_FX" -> drawDashFx(gc, sx, sy, pr);
                 default -> {
                     if (!kind.endsWith("_FX")) {
                         gc.setStroke(Color.rgb(30, 30, 30));
@@ -118,7 +118,7 @@ public final class Renderer {
         }
 
         for (PlayerStateDTO p : players.values()) {
-            drawBlockAvatar(gc, offX + p.x, offY + p.y, p, p.id == yourId, nowNs);
+            drawBlockAvatar(gc, offX + p.x, offY + p.y, p, p.id == yourId);
         }
 
         if (mazeCells != null) {
@@ -126,8 +126,8 @@ public final class Renderer {
         }
 
         gc.setGlobalAlpha(1.0);
-        drawDomainClashHud(gc, cw, ch, players);
-        drawBottomHud(gc, cw, ch, players, players.get(yourId), serverTimeMs, matchInfo);
+        drawDomainClashHud(gc, cw, players);
+        drawBottomHud(gc, cw, ch, players.get(yourId), serverTimeMs, matchInfo);
         drawMatchOverlay(gc, cw, ch, players, serverTimeMs, matchInfo);
     }
 
@@ -161,10 +161,10 @@ public final class Renderer {
         for (var e : wallFx.entrySet()) {
             double age = (now - e.getValue()) / 1e9;
             if (age < 0 || age > 0.7) continue;
-            gc.setGlobalAlpha(clamp(0.70 - age * 1.1, 0, 0.70));
+            gc.setGlobalAlpha(clamp(0.70 - age * 1.1, 0.70));
             int idx = e.getKey();
             double px = offX + (idx % w) * cell + cell / 2.0;
-            double py = offY + (idx / w) * cell + cell / 2.0;
+            double py = offY + ((double) idx / w) * cell + cell / 2.0;
             int seed = (int)((e.getValue() >> 18) ^ (idx * 1337));
             for (int i = 0; i < 6; i++) {
                 seed = seed * 1664525 + 1013904223;
@@ -208,7 +208,7 @@ public final class Renderer {
             TrailPoint prev = null;
             for (TrailPoint tp : dq) {
                 if (prev != null) {
-                    gc.setGlobalAlpha(clamp(0.60 - (nowNs - tp.tNs) / 1e9 * 2.3, 0, 0.60));
+                    gc.setGlobalAlpha(clamp(0.60 - (nowNs - tp.tNs) / 1e9 * 2.3, 0.60));
                     gc.strokeLine(prev.x, prev.y, tp.x, tp.y);
                 }
                 prev = tp;
@@ -217,14 +217,14 @@ public final class Renderer {
         }
     }
 
-    private static List<Star> makeStarfield(long seed, int n) {
+    private static List<Star> makeStarfield(long seed) {
         Random rnd = new Random(seed);
-        ArrayList<Star> stars = new ArrayList<>(n);
-        for (int i=0;i<n;i++) stars.add(new Star(rnd.nextDouble(), rnd.nextDouble(), 0.6+rnd.nextDouble()*1.8, 0.15+rnd.nextDouble()*0.55, 0.3+rnd.nextDouble()*0.7));
+        ArrayList<Star> stars = new ArrayList<>(240);
+        for (int i = 0; i< 240; i++) stars.add(new Star(rnd.nextDouble(), rnd.nextDouble(), 0.6+rnd.nextDouble()*1.8, 0.15+rnd.nextDouble()*0.55, 0.3+rnd.nextDouble()*0.7));
         return stars;
     }
 
-    private static void drawDomains(GraphicsContext gc, double cw, double ch, Map<Integer, PlayerStateDTO> players, long serverTimeMs, double offX, double offY) {
+    private static void drawDomains(GraphicsContext gc, double cw, double ch, Map<Integer, PlayerStateDTO> players, long serverTimeMs) {
         PlayerStateDTO gojo = null, sukuna = null;
         for (PlayerStateDTO p : players.values()) {
             if ("GOJO".equalsIgnoreCase(p.character)) gojo = p;
@@ -263,7 +263,7 @@ public final class Renderer {
             gc.setGlobalAlpha(0.38); gc.setFill(Color.rgb(10, 12, 18)); gc.fillRect(0, 0, cw, ch);
 
             double drift = (age % 5000) / 5000.0;
-            for (Star st : makeStarfield(gojo.domainStartMs ^ 0x9E3779B97F4A7C15L, 240)) {
+            for (Star st : makeStarfield(gojo.domainStartMs ^ 0x9E3779B97F4A7C15L)) {
                 double px = (st.x * cw + drift * 40.0 * st.layer) % cw;
                 double py = (st.y * ch + drift * 26.0 * st.layer) % ch;
                 if (px < 0) px += cw; if (py < 0) py += ch;
@@ -306,7 +306,7 @@ public final class Renderer {
         }
 
         if (uv && ms) {
-            gc.setGlobalAlpha(0.05 + 0.03 * ((serverTimeMs / 80) % 2));
+            gc.setGlobalAlpha(0.05 + 0.03 * (((double) serverTimeMs / 80) % 2));
             gc.setFill(Color.rgb(250, 250, 255));
             gc.fillRect(0, 0, cw, ch);
         }
@@ -324,7 +324,7 @@ public final class Renderer {
         gc.restore();
     }
 
-    private static void drawBlockAvatar(GraphicsContext gc, double x, double y, PlayerStateDTO p, boolean highlight, long nowNs) {
+    private static void drawBlockAvatar(GraphicsContext gc, double x, double y, PlayerStateDTO p, boolean highlight) {
         boolean isGojo = "GOJO".equalsIgnoreCase(p.character);
         Color bodyColor = isGojo ? Color.rgb(70, 120, 255) : ("SUKUNA".equalsIgnoreCase(p.character) ? Color.rgb(235, 70, 70) : Color.rgb(90, 90, 90));
 
@@ -354,7 +354,7 @@ public final class Renderer {
     private static void drawBar(GraphicsContext gc, double x, double y, double w, double h, int val, int max, Color c) {
         gc.setStroke(Color.rgb(20, 20, 20)); gc.strokeRect(x, y, w, h);
         gc.setFill(c); gc.setGlobalAlpha(0.75);
-        gc.fillRect(x, y, w * clamp(max > 0 ? (double)val/max : 0, 0, 1), h);
+        gc.fillRect(x, y, w * clamp(max > 0 ? (double)val/max : 0, 1), h);
         gc.setGlobalAlpha(1.0);
     }
 
@@ -373,7 +373,7 @@ public final class Renderer {
         gc.setGlobalAlpha(1.0); gc.setLineWidth(1.0);
     }
 
-    private static void drawBlueMaximum(GraphicsContext gc, double x, double y, double r, double ang, long nowNs) {
+    private static void drawBlueMaximum(GraphicsContext gc, double x, double y, double r, long nowNs) {
         gc.setFill(Color.rgb(60, 160, 255)); gc.setGlobalAlpha(0.08); gc.fillOval(x - r*7, y - r*7, r*14, r*14);
         gc.setGlobalAlpha(0.95); gc.fillOval(x - r*1.25, y - r*1.25, r*2.5, r*2.5);
         long t = nowNs / 18_000_000L;
@@ -390,7 +390,7 @@ public final class Renderer {
     private static void drawRedOrb(GraphicsContext gc, double x, double y, double r, long nowNs) {
         gc.setFill(Color.rgb(255, 80, 80)); gc.setGlobalAlpha(0.95); gc.fillOval(x - r, y - r, r*2, r*2);
         gc.setGlobalAlpha(1.0); gc.setStroke(Color.rgb(255, 80, 80)); gc.setLineWidth(1.1); gc.strokeOval(x - r*1.15, y - r*1.15, r*2.3, r*2.3);
-        double phase = ((nowNs / 35_000_000L) % 10) / 10.0;
+        double phase = (((double) nowNs / 35_000_000L) % 10) / 10.0;
         gc.setStroke(Color.rgb(255, 110, 110)); gc.setLineWidth(2.0); gc.setGlobalAlpha(0.20 - phase * 0.18);
         double rr = r * (1.6 + phase * 1.2); gc.strokeOval(x - rr, y - rr, rr*2, rr*2);
         gc.setGlobalAlpha(1.0);
@@ -401,7 +401,7 @@ public final class Renderer {
                 new Stop(0, Color.rgb(255,255,255,0.95)),
                 new Stop(1, Color.rgb(130,40,220,0.95)));
         gc.setFill(core); gc.fillOval(x - r, y - r, r*2, r*2);
-        double rot = ((nowNs / 18_000_000L) % 360);
+        double rot = (((double) nowNs / 18_000_000L) % 360);
         gc.setLineWidth(2.6); gc.setGlobalAlpha(0.55);
         gc.setStroke(Color.rgb(90, 175, 255)); gc.strokeArc(x-r*1.2, y-r*1.2, r*2.4, r*2.4, rot, 140, ArcType.OPEN);
         gc.setStroke(Color.rgb(255, 95, 110)); gc.strokeArc(x-r*1.2, y-r*1.2, r*2.4, r*2.4, rot+160, 140, ArcType.OPEN);
@@ -487,7 +487,7 @@ public final class Renderer {
         gc.setGlobalAlpha(1.0);
     }
 
-    private static void drawDashFx(GraphicsContext gc, double x, double y, ProjectileStateDTO pr, long nowNs) {
+    private static void drawDashFx(GraphicsContext gc, double x, double y, ProjectileStateDTO pr) {
         double len = pr.visualLength > 0 ? pr.visualLength : 60.0;
         double x2 = x + Math.cos(pr.angleRad) * len, y2 = y + Math.sin(pr.angleRad) * len;
         gc.setStroke(Color.BLACK);
@@ -524,7 +524,7 @@ public final class Renderer {
             seed = seed * 1664525 + 1013904223;
             double t = i/18.0, off = (((seed>>>8)%1000)/1000.0-0.5)*(8+t*18);
             double sx = x-dx*(t*34)-dy*off, sy = y-dy*(t*34)+dx*off;
-            gc.setGlobalAlpha(clamp(0.6-t*0.6,0,0.6)); gc.setLineWidth(2.4-t*1.6);
+            gc.setGlobalAlpha(clamp(0.6-t*0.6, 0.6)); gc.setLineWidth(2.4-t*1.6);
             gc.strokeLine(sx, sy, sx-dx*(18+(seed>>>8)%26), sy-dy*(18+(seed>>>8)%26));
         }
         gc.setGlobalAlpha(1.0); gc.setLineWidth(1.0);
@@ -533,7 +533,7 @@ public final class Renderer {
     private static void drawExplosion(GraphicsContext gc, double x, double y, double r, long nowNs) {
         gc.setStroke(Color.rgb(255, 150, 60)); gc.setFill(Color.rgb(255, 150, 60));
         gc.setGlobalAlpha(0.12); gc.fillOval(x-r, y-r, r*2, r*2);
-        double phase = ((nowNs / 40_000_000L) % 8) / 8.0, rr = r*(0.55+phase*0.55);
+        double phase = (((double) nowNs / 40_000_000L) % 8) / 8.0, rr = r*(0.55+phase*0.55);
         gc.setGlobalAlpha(0.55-phase*0.55); gc.setLineWidth(3.0); gc.strokeOval(x-rr, y-rr, rr*2, rr*2);
         gc.setGlobalAlpha(1.0); gc.setLineWidth(1.0);
     }
@@ -555,7 +555,7 @@ public final class Renderer {
         gc.setGlobalAlpha(1.0);
     }
 
-    private static void drawDomainClashHud(GraphicsContext gc, double cw, double ch, Map<Integer, PlayerStateDTO> players) {
+    private static void drawDomainClashHud(GraphicsContext gc, double cw, Map<Integer, PlayerStateDTO> players) {
         PlayerStateDTO gojo = null, suk = null;
         for (PlayerStateDTO p : players.values()) {
             if ("GOJO".equalsIgnoreCase(p.character)) gojo = p;
@@ -581,13 +581,12 @@ public final class Renderer {
     }
 
     private static void drawBottomHud(GraphicsContext gc, double cw, double ch,
-                                      Map<Integer, PlayerStateDTO> players,
                                       PlayerStateDTO me,
                                       long tMs,
                                       MatchInfo matchInfo) {
         if (me == null) return;
 
-        // максимально компактная панель
+        // компактная панель снизу как в Доте
         final double panelH = 112;
         final double margin = 10;
         final double x = margin;
@@ -599,7 +598,7 @@ public final class Renderer {
         gc.setStroke(Color.rgb(205, 205, 205));
         gc.strokeRoundRect(x, y, w, panelH, 16, 16);
 
-        // данные матча (в одну строку — компактно)
+        // данные матча
         int round = 1, p1Score = 0, p2Score = 0, winScore = 3;
         if (matchInfo != null) {
             round = Math.max(1, matchInfo.roundNumber());
@@ -612,7 +611,7 @@ public final class Renderer {
         gc.setFont(Font.font("System", FontWeight.BOLD, 14));
         gc.fillText("R" + round + "  " + p1Score + "–" + p2Score + " (to " + winScore + ")", x + 12, y + 20);
 
-        // ∞ (маленький бейдж, тоже компактно)
+        // ∞ для Годжика
         if ("GOJO".equalsIgnoreCase(me.character)) {
             double bx = x + w - 52, by = y + 8;
             gc.setFill(Color.WHITE);
@@ -625,20 +624,20 @@ public final class Renderer {
             gc.fillText("∞", bx + 14, by + 19);
         }
 
-        // --- справа: абилки (компактнее + выше)
+        // справа: абилки
         final double slot = 44;
         final double pad = 8;
         final double abilTotalW = (slot + pad) * 5 - pad;       // 5 слотов
         final double abilX0 = x + w - 12 - abilTotalW;          // выравнивание вправо
         final double abilY0 = y + panelH - slot - 8;            // почти у низа
 
-        // --- слева: HP/CE (ЕЩЁ НИЖЕ — на уровне иконок)
+        // слева: HP/CE
         final double barsX = x + 12;
         final double barsW = Math.max(160, abilX0 - barsX - 12);
 
         final double barH = 8;
-        final double hpY = abilY0 + 6;   // ниже, чем было
-        final double ceY = abilY0 + 24;  // ниже, чем было
+        final double hpY = abilY0 + 6;
+        final double ceY = abilY0 + 24;
 
         gc.setFill(Color.rgb(20, 20, 20));
         gc.setFont(Font.font("System", FontWeight.BOLD, 11));
@@ -761,7 +760,7 @@ public final class Renderer {
         }
     }
 
-    private static double clamp(double v, double min, double max) {
-        return Math.max(min, Math.min(max, v));
+    private static double clamp(double v, double max) {
+        return Math.max(0, Math.min(max, v));
     }
 }
