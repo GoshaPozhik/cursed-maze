@@ -1,4 +1,4 @@
-package ru.itis.jjk.ui;
+package ru.itis.jjk.ui.controller;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;

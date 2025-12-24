@@ -2,8 +2,8 @@ package ru.itis.jjk;
 
 import ru.itis.jjk.net.client.GameClient;
 import ru.itis.jjk.net.server.GameServer;
-import ru.itis.jjk.ui.GameController;
-import ru.itis.jjk.ui.LobbyController;
+import ru.itis.jjk.ui.controller.GameController;
+import ru.itis.jjk.ui.controller.LobbyController;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;

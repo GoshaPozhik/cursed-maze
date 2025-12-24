@@ -1,4 +1,4 @@
-package ru.itis.jjk.ui;
+package ru.itis.jjk.ui.controller;
 
 import ru.itis.jjk.net.client.GameClient;
 import ru.itis.jjk.net.msg.*;
@@ -11,6 +11,9 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
+import ru.itis.jjk.ui.MatchInfo;
+import ru.itis.jjk.ui.renderer.Renderer;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
